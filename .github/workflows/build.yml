@@ -1,0 +1,87 @@
+name: Build on aarch64
+
+# Controls when the workflow will run
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: git ref to use for build
+        type: string
+        default: dev
+        required: false
+      apply_patch:
+        description: apply fix-multiple-definition-error.patch
+        type: boolean
+        default: true
+        required: false
+      debug_build:
+        description: enable debug build
+        type: boolean
+        default: false
+        required: false
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: Netflix/dynomite
+          ref: ${{ inputs.ref }}
+
+      - if: inputs.apply_patch
+        uses: actions/checkout@v3
+        with:
+          path: __build
+
+      - if: inputs.apply_patch
+        run: |
+          cp __build/fix-multiple-definition-error.patch fix-multiple-definition-error.patch
+          git apply fix-multiple-definition-error.patch
+
+      - uses: uraimo/run-on-arch-action@v2
+        name: Run commands
+        id: runcmd
+        with:
+          arch: aarch64
+          distro: bullseye
+
+          # Not required, but speeds up builds by storing container images in
+          # a GitHub package registry.
+          githubToken: ${{ github.token }}
+
+          # Create an artifacts directory
+          setup: |
+            mkdir -p "${PWD}/artifacts"
+          # Mount the artifacts directory as /artifacts in the container
+          dockerRunArgs: |
+            --volume "${PWD}/artifacts:/artifacts"
+
+          install: |
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update -q -y
+            apt-get install -q -y autoconf build-essential dh-autoreconf libssl-dev libtool software-properties-common git
+          # Set an output parameter `uname` for use in subsequent steps
+          run: |
+            autoreconf -fvi
+            if ${{ inputs.debug_build }}
+            then
+              CFLAGS="-ggdb3 -O0" ./configure --enable-debug=full --build=aarch64-unknown-linux-gnu
+            else
+              ./configure --build=aarch64-unknown-linux-gnu
+            fi
+            make
+            ls -alh
+            src/dynomite -h
+            cp src/dynomite /artifacts/dynomite
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: dynomite-${{ inputs.ref }}
+          path: artifacts/dynomite
