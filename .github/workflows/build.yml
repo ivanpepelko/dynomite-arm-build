@@ -20,6 +20,12 @@ on:
         type: boolean
         default: false
         required: false
+      distro:
+        description: distro
+        type: choice
+        options: [ stretch, buster, bullseye, ubuntu16.04, ubuntu18.04, ubuntu20.04, ubuntu22.04, ubuntu_latest, ubuntu_rolling, ubuntu_devel, fedora_latest, alpine_latest, archarm_latest ]
+        default: bullseye
+        required: false
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -48,7 +54,7 @@ jobs:
         id: runcmd
         with:
           arch: aarch64
-          distro: bullseye
+          distro: ${{ inputs.distro }}
 
           # Not required, but speeds up builds by storing container images in
           # a GitHub package registry.
