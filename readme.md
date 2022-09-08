@@ -17,5 +17,6 @@ Parameters:
 - apply patch: extracted from [https://github.com/Netflix/dynomite/pull/775](https://github.com/Netflix/dynomite/pull/775)
   - build will fail without this at v0.6.22
 - debug build: as explained in dynomite readme, off by default
+- distro: choose one of available distros to build on, bullseys by default
 
 Built binary can be found after successful run in workflow details artifacts section.
